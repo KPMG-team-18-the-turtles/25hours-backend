@@ -17,11 +17,11 @@ namespace TwentyFiveHours.API.Controllers
     /// </summary>
     [Route("api/clients")]
     [ApiController]
-    public class ClientController : ControllerBase
+    public class APIController : ControllerBase
     {
         private readonly ClientService _service;
 
-        public ClientController(ClientService service)
+        public APIController(ClientService service)
         {
             this._service = service;
         }
