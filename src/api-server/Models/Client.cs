@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -11,11 +12,11 @@ namespace TwentyFiveHours.API.Models
 
         public string Contact { get; set; }
 
-        public DateTime LastMeetingDate { get; set; }
+        public string ProfileImagePath { get; set; }
+
+        public (long index, DateTime date) LastMeeting { get; set; }
 
         public IList<MeetingModel> Meetings { get; set; } = new List<MeetingModel>();
-
-        public ClientModel() { }
     }
 
     public class ClientDatabaseSettings : IMongoDatabaseSettings
