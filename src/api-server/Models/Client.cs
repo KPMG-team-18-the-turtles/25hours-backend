@@ -8,15 +8,22 @@ namespace TwentyFiveHours.API.Models
 {
     public class ClientModel : AbstractModel
     {
+        public class AgendaItem
+        {
+            public string Content { get; set; }
+
+            public bool Completed { get; set; }
+        }
+
         public string Name { get; set; }
 
         public string Contact { get; set; }
 
         public string ProfileImagePath { get; set; }
 
-        public (long index, DateTime date) LastMeeting { get; set; }
-
         public IList<MeetingModel> Meetings { get; set; } = new List<MeetingModel>();
+
+        public IList<AgendaItem> Agenda { get; set; } = new List<AgendaItem>();
     }
 
     public class ClientDatabaseSettings : IMongoDatabaseSettings

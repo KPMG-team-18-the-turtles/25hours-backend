@@ -27,14 +27,21 @@ namespace TwentyFiveHours.API.Controllers
             this._service = service;
         }
 
-        /// <summary>
-        /// Get all clients as a list.
-        /// </summary>
-        /// <returns>List of all registered clients.</returns>
+        #region Client-related
+
         [HttpGet]
         public ActionResult<IEnumerable<ClientModel>> GetClients()
         {
             return this._service.Get();
+        }
+
+        [HttpPost]
+        public IActionResult PostClient(ClientModel client)
+        {
+            client.ID = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+            this._service.Create(client);
+
+            return CreatedAtAction(nameof(GetClient), new { id = client.ID }, client);
         }
 
         [HttpGet("{id:length(24)}")]
@@ -78,21 +85,21 @@ namespace TwentyFiveHours.API.Controllers
             if (client == null)
                 return NotFound();
 
-            var imageContent = System.IO.File.ReadAllBytes(client.ProfileImagePath);
+            try
+            {
+                var imageContent = System.IO.File.ReadAllBytes(client.ProfileImagePath);
 
-            return File(imageContent, "image/jpeg");
-        }
-
-        [HttpGet("{id:length(24)}/last-meeting")]
-        public ActionResult<(long, DateTime)> GetClientLastMeeting(string id)
-        {
-            var client = this._service.Get(id);
-
-            if (client == null)
+                return File(imageContent, "image/jpeg");
+            }
+            catch (FileNotFoundException e)
+            {
                 return NotFound();
-
-            return client.LastMeeting;
+            }
         }
+
+        #endregion // Client-related
+
+        #region Meeting-related
 
         [HttpGet("{id:length(24)}/meetings")]
         public ActionResult<IList<MeetingModel>> GetClientMeetings(string id)
@@ -106,7 +113,7 @@ namespace TwentyFiveHours.API.Controllers
         }
 
         [HttpPost("{id:length(24)}/meetings")]
-        public ActionResult<MeetingModel> PostClientMeeting(string id, MeetingModel meeting)
+        public IActionResult PostClientMeeting(string id, MeetingModel meeting)
         {
             var client = this._service.Get(id);
 
@@ -117,7 +124,7 @@ namespace TwentyFiveHours.API.Controllers
             client.Meetings.Add(meeting);
             this._service.Update(id, client);
 
-            return meeting;
+            return CreatedAtAction(nameof(GetClientMeeting), new { index = meeting.Index }, meeting);
         }
 
         [HttpGet("{id:length(24)}/meetings/{index}")]
@@ -150,5 +157,7 @@ namespace TwentyFiveHours.API.Controllers
 
             return NoContent();
         }
+
+        #endregion // Meeting-related
     }
 }
