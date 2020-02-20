@@ -82,19 +82,26 @@ namespace TwentyFiveHours.API.Controllers
         {
             var client = this._service.Get(id);
 
-            if (client == null)
+            if (client == null || client.ProfileImagePath.Equals(string.Empty))
                 return NotFound();
 
-            try
-            {
-                var imageContent = System.IO.File.ReadAllBytes(client.ProfileImagePath);
+            var imageContent = System.IO.File.ReadAllBytes(client.ProfileImagePath);
 
-                return File(imageContent, "image/jpeg");
-            }
-            catch (FileNotFoundException e)
-            {
-                return NotFound();
-            }
+            return File(imageContent, "image/jpeg");
+        }
+
+        [HttpPost("{id:length(24)}/profile-image")]
+        public async Task<IActionResult> PostClientProfileImage(string id, IFormFile file)
+        {
+            var path = Path.GetRandomFileName();
+            using (var stream = new FileStream(path, FileMode.Create))
+                await file.CopyToAsync(stream);
+
+            var client = this._service.Get(id);
+            client.ProfileImagePath = path;
+            this._service.Update(id, client);
+
+            return Ok(new { Count = 1, Size = file.Length, Path = path });
         }
 
         #endregion // Client-related
@@ -124,7 +131,7 @@ namespace TwentyFiveHours.API.Controllers
             client.Meetings.Add(meeting);
             this._service.Update(id, client);
 
-            return CreatedAtAction(nameof(GetClientMeeting), new { index = meeting.Index }, meeting);
+            return CreatedAtAction(nameof(GetClientMeeting), new { id, index = meeting.Index }, meeting);
         }
 
         [HttpGet("{id:length(24)}/meetings/{index}")]
@@ -156,6 +163,22 @@ namespace TwentyFiveHours.API.Controllers
             this._service.Update(id, client);
 
             return NoContent();
+        }
+
+        [HttpPost("{id:length(24)}/meetings/{index}/upload-audio")]
+        public async Task<IActionResult> PostClientMeetingAudio(string id, int index, IFormFile file)
+        {
+            var path = Path.GetRandomFileName();
+            using (var stream = new FileStream(path, FileMode.Create))
+                await file.CopyToAsync(stream);
+
+            var client = this._service.Get(id);
+            client.Meetings[index].RawAudioLocation = path;
+            this._service.Update(id, client);
+
+            // TODO: start analyzing the content
+
+            return Ok(new { Count = 1, Size = file.Length, Path = path });
         }
 
         #endregion // Meeting-related
