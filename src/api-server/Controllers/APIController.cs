@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
+using TwentyFiveHours.API.Azure;
 using TwentyFiveHours.API.Models;
 using TwentyFiveHours.API.Services;
 
@@ -172,11 +173,23 @@ namespace TwentyFiveHours.API.Controllers
             using (var stream = new FileStream(path, FileMode.Create))
                 await file.CopyToAsync(stream);
 
-            var client = this._service.Get(id);
-            client.Meetings[index].RawAudioLocation = path;
-            this._service.Update(id, client);
+            System.Diagnostics.Debug.WriteLine("file created");
 
-            // TODO: start analyzing the content
+            var client = this._service.Get(id);
+
+            var speech = new SpeechRecognitionWrapper("key", "regionstring");
+            string textPath = await speech.RecognizeIntoFile(path);
+            System.Diagnostics.Debug.WriteLine("text file created");
+
+            using (var text = new TextAnalyticsWrapper("key", "endpoint"))
+            {
+                client.Meetings[index].Keywords = text.GetKeyPhrasesFromFile(textPath);
+                client.Meetings[index].Summary = text.GetSummariesFromFile(textPath, 3);
+            }
+
+            client.Meetings[index].RawAudioLocation = path;
+            client.Meetings[index].RawTextLocation = textPath;
+            this._service.Update(id, client);
 
             return Ok(new { Count = 1, Size = file.Length, Path = path });
         }
