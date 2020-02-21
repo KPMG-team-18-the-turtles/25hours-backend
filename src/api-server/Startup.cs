@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using TwentyFiveHours.API.Azure;
 using TwentyFiveHours.API.Models;
 using TwentyFiveHours.API.Services;
 
@@ -38,6 +39,15 @@ namespace TwentyFiveHours.API
             );
             services.AddSingleton<MongoService<ClientModel>>();
 
+            // Add Azure connection settings from environment variables.
+            services.Configure<AzureSettings>((settings) =>
+            {
+                settings.TextAnalyticsAPIKey = Environment.GetEnvironmentVariable("AZURE_TEXTANALYTICS_KEY");
+                settings.TextAnalyticsEndpoint = Environment.GetEnvironmentVariable("AZURE_TEXTANALYTICS_ENDPOINT");
+                settings.SpeechRecognitionAPIKey = Environment.GetEnvironmentVariable("AZURE_SPEECHRECOGNITION_KEY");
+                settings.SpeechRecognitionRegion = Environment.GetEnvironmentVariable("AZURE_SPEECHRECOGNITION_REGION");
+            });
+
             // Add ASP.NET Core MVC patterns.
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
@@ -47,6 +57,9 @@ namespace TwentyFiveHours.API
         {
             if (env.IsDevelopment())
             {
+                var serviceProvider = app.ApplicationServices;
+                var mongodbProvider = serviceProvider.GetService<MongoService<ClientModel>>();
+
                 app.UseDeveloperExceptionPage();
             }
             else

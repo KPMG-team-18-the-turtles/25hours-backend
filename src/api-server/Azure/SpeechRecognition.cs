@@ -22,7 +22,6 @@ namespace TwentyFiveHours.API.Azure
             var stop = new TaskCompletionSource<int>();
 
             var output = Path.GetRandomFileName() + ".txt";
-            System.Diagnostics.Debug.WriteLine("text file created");
 
             using (var outStream = new StreamWriter(output, false))
             using (var input = AudioConfig.FromWavFileInput(audioPath))
@@ -42,7 +41,13 @@ namespace TwentyFiveHours.API.Azure
                     }
                 };
 
-                recognizer.Canceled += (s, e) => stop.TrySetResult(0);
+                recognizer.Canceled += (s, e) =>
+                {
+                    System.Diagnostics.Debug.WriteLine($"Cancelled: {e.ErrorDetails}");
+                    stop.TrySetResult(0);
+                };
+
+                recognizer.SessionStarted += (s, e) => System.Diagnostics.Debug.WriteLine("Started recognizing");
 
                 recognizer.SessionStopped += (s, e) => stop.TrySetResult(0);
 

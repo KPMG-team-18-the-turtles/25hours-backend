@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.Extensions.Options;
 using TwentyFiveHours.API.Azure;
 using TwentyFiveHours.API.Models;
 using TwentyFiveHours.API.Services;
@@ -21,11 +21,14 @@ namespace TwentyFiveHours.API.Controllers
     [ApiController]
     public class APIController : ControllerBase
     {
-        private readonly ClientService _service;
+        private readonly ClientService _clientService;
 
-        public APIController(ClientService service)
+        private readonly AzureSettings _azureSettings;
+
+        public APIController(ClientService clientService, IOptions<AzureSettings> azureSettings)
         {
-            this._service = service;
+            this._clientService = clientService;
+            this._azureSettings = azureSettings.Value;
         }
 
         #region Client-related
@@ -33,14 +36,14 @@ namespace TwentyFiveHours.API.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<ClientModel>> GetClients()
         {
-            return this._service.Get();
+            return this._clientService.Get();
         }
 
         [HttpPost]
         public IActionResult PostClient(ClientModel client)
         {
             client.ID = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
-            this._service.Create(client);
+            this._clientService.Create(client);
 
             return CreatedAtAction(nameof(GetClient), new { id = client.ID }, client);
         }
@@ -48,7 +51,7 @@ namespace TwentyFiveHours.API.Controllers
         [HttpGet("{id:length(24)}")]
         public ActionResult<ClientModel> GetClient(string id)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null)
                 return NotFound();
@@ -59,7 +62,7 @@ namespace TwentyFiveHours.API.Controllers
         [HttpGet("{id:length(24)}/name")]
         public ActionResult<string> GetClientName(string id)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null)
                 return NotFound();
@@ -70,7 +73,7 @@ namespace TwentyFiveHours.API.Controllers
         [HttpGet("{id:length(24)}/contact")]
         public ActionResult<string> GetClientContact(string id)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null)
                 return NotFound();
@@ -81,7 +84,7 @@ namespace TwentyFiveHours.API.Controllers
         [HttpGet("{id:length(24)}/profile-image")]
         public IActionResult GetClientProfileImage(string id)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null || client.ProfileImagePath.Equals(string.Empty))
                 return NotFound();
@@ -98,9 +101,9 @@ namespace TwentyFiveHours.API.Controllers
             using (var stream = new FileStream(path, FileMode.Create))
                 await file.CopyToAsync(stream);
 
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
             client.ProfileImagePath = path;
-            this._service.Update(id, client);
+            this._clientService.Update(id, client);
 
             return Ok(new { Count = 1, Size = file.Length, Path = path });
         }
@@ -112,7 +115,7 @@ namespace TwentyFiveHours.API.Controllers
         [HttpGet("{id:length(24)}/meetings")]
         public ActionResult<IList<MeetingModel>> GetClientMeetings(string id)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null)
                 return NotFound();
@@ -123,14 +126,14 @@ namespace TwentyFiveHours.API.Controllers
         [HttpPost("{id:length(24)}/meetings")]
         public IActionResult PostClientMeeting(string id, MeetingModel meeting)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null)
                 return NotFound();
 
             meeting.Index = client.Meetings.Count;
             client.Meetings.Add(meeting);
-            this._service.Update(id, client);
+            this._clientService.Update(id, client);
 
             return CreatedAtAction(nameof(GetClientMeeting), new { id, index = meeting.Index }, meeting);
         }
@@ -138,7 +141,7 @@ namespace TwentyFiveHours.API.Controllers
         [HttpGet("{id:length(24)}/meetings/{index}")]
         public ActionResult<MeetingModel> GetClientMeeting(string id, int index)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null)
                 return NotFound();
@@ -149,7 +152,7 @@ namespace TwentyFiveHours.API.Controllers
         [HttpDelete("{id:length(24)}/meetings/{index}")]
         public IActionResult DeleteClientMeeting(string id, int index)
         {
-            var client = this._service.Get(id);
+            var client = this._clientService.Get(id);
 
             if (client == null
                 || (index < 0 || index >= client.Meetings.Count))
@@ -161,7 +164,7 @@ namespace TwentyFiveHours.API.Controllers
             for (int i = 0; i < client.Meetings.Count; i++)
                 client.Meetings[i].Index = i;
 
-            this._service.Update(id, client);
+            this._clientService.Update(id, client);
 
             return NoContent();
         }
@@ -169,19 +172,22 @@ namespace TwentyFiveHours.API.Controllers
         [HttpPost("{id:length(24)}/meetings/{index}/upload-audio")]
         public async Task<IActionResult> PostClientMeetingAudio(string id, int index, IFormFile file)
         {
-            var path = Path.GetRandomFileName();
+            var path = Path.GetRandomFileName() + ".wav";
             using (var stream = new FileStream(path, FileMode.Create))
                 await file.CopyToAsync(stream);
 
-            System.Diagnostics.Debug.WriteLine("file created");
+            var client = this._clientService.Get(id);
 
-            var client = this._service.Get(id);
-
-            var speech = new SpeechRecognitionWrapper("key", "regionstring");
+            var speech = new SpeechRecognitionWrapper(
+                this._azureSettings.SpeechRecognitionAPIKey,
+                this._azureSettings.SpeechRecognitionRegion
+            );
             string textPath = await speech.RecognizeIntoFile(path);
-            System.Diagnostics.Debug.WriteLine("text file created");
 
-            using (var text = new TextAnalyticsWrapper("key", "endpoint"))
+            using (var text = new TextAnalyticsWrapper(
+                this._azureSettings.TextAnalyticsAPIKey,
+                this._azureSettings.TextAnalyticsEndpoint
+            ))
             {
                 client.Meetings[index].Keywords = text.GetKeyPhrasesFromFile(textPath);
                 client.Meetings[index].Summary = text.GetSummariesFromFile(textPath, 3);
@@ -189,7 +195,7 @@ namespace TwentyFiveHours.API.Controllers
 
             client.Meetings[index].RawAudioLocation = path;
             client.Meetings[index].RawTextLocation = textPath;
-            this._service.Update(id, client);
+            this._clientService.Update(id, client);
 
             return Ok(new { Count = 1, Size = file.Length, Path = path });
         }
