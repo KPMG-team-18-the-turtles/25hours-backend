@@ -6,7 +6,7 @@
 
 ## 사용 가능한 API 목록
 
-REST API를 통해 클라이언트와 회의 내용을 조정할 수 있습니다. 더 자세한 설명은 `docs/` 폴더 안의 API 레퍼런스를 참고하십시오.
+REST API를 통해 클라이언트와 회의 내용을 조정할 수 있습니다. 더 자세한 설명은 `docs/` 폴더 안의 [API 레퍼런스](https://github.com/KPMG-team-18-the-turtles/25hours-backend/blob/master/docs/API.md)를 참고하십시오.
 
 | API | 설명 |
 | --- | ---- |
