@@ -32,12 +32,12 @@ namespace TwentyFiveHours.API.Azure
                     System.Diagnostics.Debug.WriteLine("something is here...?");
                     if (e.Result.Reason == ResultReason.RecognizedSpeech)
                     {
-                        System.Diagnostics.Debug.WriteLine("it's some sort of speech: {}", e.Result.Text);
+                        System.Diagnostics.Debug.WriteLine("it's some sort of speech: " + e.Result.Text);
                         outStream.Write(e.Result.Text);
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine("something: {}", e.Result.Reason);
+                        System.Diagnostics.Debug.WriteLine("something: "+ e.Result.Reason);
                     }
                 };
 
@@ -58,6 +58,10 @@ namespace TwentyFiveHours.API.Azure
                 await recognizer.StopContinuousRecognitionAsync().ConfigureAwait(false);
                 System.Diagnostics.Debug.WriteLine("alright finished recognizing shits here");
             }
+
+            var text = File.ReadAllText(output);
+            text.Replace(".", ". ");
+            File.WriteAllText(output, text);
 
             return output;
         }

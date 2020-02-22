@@ -170,6 +170,7 @@ namespace TwentyFiveHours.API.Controllers
         }
 
         [HttpPost("{id:length(24)}/meetings/{index}/upload-audio")]
+        [DisableRequestSizeLimit]
         public async Task<IActionResult> PostClientMeetingAudio(string id, int index, IFormFile file)
         {
             var path = Path.GetRandomFileName() + ".wav";

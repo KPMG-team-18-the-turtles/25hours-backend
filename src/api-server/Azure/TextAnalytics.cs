@@ -30,9 +30,35 @@ namespace TwentyFiveHours.API.Azure
         public string[] GetKeyPhrasesFromFile(string path)
         {
             var text = new StreamReader(path);
-            var result = this._client.KeyPhrases(text.ReadToEnd());
+            var entire = text.ReadToEnd();
+            var result = new Dictionary<string, int>();
+            System.Diagnostics.Debug.WriteLine(entire);
+
+            foreach (var sentence in entire.Split('.', '?', '!'))
+            {
+                try
+                {
+                    var keywords = this._client.KeyPhrases(sentence);
+                    foreach (var keyword in keywords.KeyPhrases)
+                    {
+                        if (result.ContainsKey(keyword))
+                            result[keyword] += 1;
+                        else
+                            result.Add(keyword, 0);
+                        System.Diagnostics.Debug.WriteLine(keyword);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // Do nothing
+                }
+            }
+
             text.Dispose();
-            return result.KeyPhrases.ToArray();
+
+            return (from item in result
+                    orderby item.Value descending
+                    select item.Key).Take(15).ToArray();
         }
 
         public string[] GetSummariesFromFile(string path, int max)
